@@ -5,7 +5,7 @@ module Rim
       @logger.formatter = proc { |severity, datetime, progname, msg|
         type = severity
         if type == "DEBUG"
-          msg.yellow + "\n"
+          msg + "\n"
         else 
           type = type.bold
           "#{type} #{datetime.strftime("%T %D")}: #{msg}\n"
