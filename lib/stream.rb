@@ -50,11 +50,20 @@ module Rim
       state :client_auth do
         
         def parse(tag,attributes)
-          
+          if tag == "auth"
+            Rim.logger.info "Authenticating client using #{attributes["mechanism"]}"
+            
+            chellange = REXML::Element.new('challenge')
+            chellange.add_namespace('urn:ietf:params:xml:ns:xmpp-sasl')
+            chellange.text = "cmVhbG09InNvbWVyZWFsbSIsbm9uY2U9Ik9BNk1HOXRFUUdtMmhoIixxb3A9ImF1dGgiLGNoYXJzZXQ9dXRmLTgsYWxnb3JpdGhtPW1kNS1zZXNzCg=="
+            write(chellange)
+          end
         end
         
         def send_head(attr)
-          self.stream_id = Rufus::Mnemo::from_i(Time.new.to_f * 100000 * rand)
+          Rim.logger.info "Sending header and feratures."
+          
+          self.stream_id = "rim_"+(Time.new.to_f*100000).to_i.to_s(32)
           connection_type_name = client? ? "jabber:client" : "jabber:server"
           stanza = %(<?xml version='1.0'?>) +
                    %(<stream:stream ) +
@@ -66,16 +75,25 @@ module Rim
     
           write(stanza)
           
-          feat = REXML::Element.new('stream:features')
+          feature = REXML::Element.new('stream:features')
+          mech = REXML::Element.new('mechanisms')
+          mech.add_namespace('urn:ietf:params:xml:ns:xmpp-sasl')
           
+          ['PLAIN', 'DIGEST-MD5'].each do |con_type|
+            mechxml = REXML::Element.new('mechanism')
+            mechxml.text = con_type
+            mech << mechxml
+          end
           
-          write(feat)
+          feature << mech
+          
+          write(feature)
         end
       end
     end
     
     def read(content)
-      Rim.logger.debug content.magenta
+      Rim.logger.debug content.blue
       @parser.source.buffer << content
       @parser.parse
       # parse(content)
@@ -115,13 +133,17 @@ module Rim
       super()
       self.host = host
       self.connection = connection
-      @formatter = REXML::Formatters::Pretty.new
+      @formatter = REXML::Formatters::Default.new
       
       @parser  = REXML::Parsers::SAX2Parser.new('')
 
       @parser.listen(:start_element) do |uri, localname, qname, attributes|
         self.send(:parse, qname, attributes) if respond_to?(:parse)
       end
+      
+      Rim.logger.debug "XML dump legend:"
+      Rim.logger.debug "Sending".green
+      Rim.logger.debug "Reciving".blue
     end
 
     def client?

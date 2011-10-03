@@ -5,8 +5,9 @@ require "eventmachine"
 require "logger"
 require 'socket'
 require 'rexml/document'
-require "rexml/document"
 require 'rexml/parsers/sax2parser'
+require "rexml/formatters/default"
+require "base64"
 require "state_machine"
 require "colored"
 require "rufus-mnemo"
