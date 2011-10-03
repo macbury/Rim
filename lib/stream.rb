@@ -1,24 +1,71 @@
-require "./stream/client"
+module Rim
+  class Stream
+    Server = 0x0
+    Client = 0x1
 
-module Rim::Stream
-  
-  class Base
+    attr_accessor :connection, :type, :stream_id, :host
     
-    def xmldecl(version, encoding, standalone)
-      Rim.logger.debug "Stream start: #{version}:#{encoding}>"
+    state_machine :initial => :idle do
+      before_transition :idle => :establish, :do => :send_head
+      
+      state :idle do
+        
+        def parse
+          
+        end
+        
+        def response(content)
+          self.establish
+        end
+        
+      end
+      
+      event :establish do
+        transition :idle => :establish
+      end
+      
+      state :establish do
+        def response(content)
+          self.establish
+        end
+      end
     end
     
-    def tag_start( name, attributes )
-      Rim.logger.debug "<#{name} #{attributes.map {|k,v| "#{k}=#{v}" }.join(" ")}>"
+    def read(content)
+      Rim.logger.debug "Read: #{content}"
+      # parse(content)
+      self.send(:response, content) if respond_to?(:response)
     end
-  
-    def text( str )
-      Rim.logger.debug(str)
+    
+    def write(content)
+      Rim.logger.debug "Sending: #{content}"
+      self.connection.send_data(content)
     end
-  
-    def tag_end( name )
-      Rim.logger.debug "</#{name}>"
+    
+    def send_head
+      self.stream_id = UUIDTools::UUID.timestamp_create
+      connection_type = "jabber:client"
+      stanza = %(<?xml version='1.0'?>) +
+               %(<stream:stream ) +
+               %(xmlns='#{connection_type}' ) +
+               %(xmlns:stream='http://etherx.jabber.org/streams' ) +
+               %(from='#{self.host}' ) +
+               %(id='#{self.stream_id}' ) +
+               %(version='1.0'>)
+
+      write(stanza)
+    end
+
+    
+    def initialize(host, connection)
+      super()
+      self.host = host
+      self.connection = connection
+
+    end
+    
+    def close
+      write("</stream:stream>")
     end
   end
-  
-end
+end

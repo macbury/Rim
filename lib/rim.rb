@@ -1,11 +1,16 @@
-
 module Rim
   def self.logger
     if @logger.nil?
       @logger = Logger.new(STDOUT)
       @logger.formatter = proc { |severity, datetime, progname, msg|
-        date = datetime.strftime("%T %D") + ": "
-        "#{date} #{msg}\n"
+        type = severity
+        if type == "DEBUG"
+          msg.yellow + "\n"
+        else 
+          type = type.bold
+          "#{type} #{datetime.strftime("%T %D")}: #{msg}\n"
+        end
+        
       }
     end
     @logger
@@ -17,7 +22,7 @@ module Rim
       Signal.trap("TERM") { EventMachine.stop }
       
       Rim.logger.info "Staring server..."
-      EventMachine.start_server("0.0.0.0", 5222, Rim::Connection)
+      EventMachine.start_server("localhost", 5222, Rim::Connection)
     end
   end
 end

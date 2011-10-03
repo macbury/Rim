@@ -1,14 +1,18 @@
 GEM
   remote: http://rubygems.org/
   specs:
-    colorize (0.5.8)
+    colored (1.2)
     eventmachine (0.12.10)
+    libxml-ruby (2.2.2)
     state_machine (1.0.2)
+    uuidtools (2.1.2)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  colorize
+  colored
   eventmachine
+  libxml-ruby
   state_machine
+  uuidtools
