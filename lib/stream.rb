@@ -54,7 +54,7 @@ module Rim
         end
         
         def send_head(attr)
-          self.stream_id = UUIDTools::UUID.timestamp_create
+          self.stream_id = Rufus::Mnemo::from_i(Time.new.to_f * 100000 * rand)
           connection_type_name = client? ? "jabber:client" : "jabber:server"
           stanza = %(<?xml version='1.0'?>) +
                    %(<stream:stream ) +
@@ -134,6 +134,7 @@ module Rim
 
     def close
       write("</stream:stream>")
+      self.connection.close_connection(true)
     end
   end
 end

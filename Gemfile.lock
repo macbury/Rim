@@ -1,11 +1,15 @@
+GIT
+  remote: https://github.com/jmettraux/rufus-mnemo.git
+  revision: a6a5bba48ac1f9e4cd0bd5e5c08000ba6e91c261
+  specs:
+    rufus-mnemo (1.2.2)
+
 GEM
   remote: http://rubygems.org/
   specs:
     colored (1.2)
     eventmachine (0.12.10)
-    libxml-ruby (2.2.2)
     state_machine (1.0.2)
-    uuidtools (2.1.2)
 
 PLATFORMS
   ruby
@@ -13,6 +17,5 @@ PLATFORMS
 DEPENDENCIES
   colored
   eventmachine
-  libxml-ruby
+  rufus-mnemo!
   state_machine
-  uuidtools

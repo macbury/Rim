@@ -9,7 +9,7 @@ require "rexml/document"
 require 'rexml/parsers/sax2parser'
 require "state_machine"
 require "colored"
-require "uuidtools"
+require "rufus-mnemo"
 
 require "./lib/extend"
 require "./lib/rim"
