@@ -1,0 +1,5 @@
+host: localhost
+database: rim_server
+raise_not_found_error: true
+identity_map_enabled: true
+autocreate_indexes: true

@@ -18,13 +18,30 @@ module Rim
     @logger
   end
   
+  def self.config
+    if @config.nil?
+      yaml = YAML.load(File.open('./config/conf.yml', 'r'))
+      @config = OpenStruct.new(yaml)
+    end
+    @config
+  end
+  
   def self.start
+    Rim.logger.info "Loading configuration"
+    Rim.config
+    Mongoid.load!("./config/mongoid.yml")
+    
+    Rim.logger.info "Connecting to database..."
+    #Mongoid.configure do |config|
+    #  config.master = Mongo::Connection.new.db("rim")
+    #end
+    
     EventMachine.run do
       Signal.trap("INT")  { EventMachine.stop }
       Signal.trap("TERM") { EventMachine.stop }
       
-      Rim.logger.info "Staring server..."
-      EventMachine.start_server("localhost", 5222, Rim::Connection)
+      Rim.logger.info "Staring server at: #{Rim.config.realm} on port #{Rim.config.port}"
+      EventMachine.start_server(Rim.config.realm, Rim.config.port, Rim::Connection)
     end
   end
 end

@@ -1,21 +1,36 @@
-GIT
-  remote: https://github.com/jmettraux/rufus-mnemo.git
-  revision: a6a5bba48ac1f9e4cd0bd5e5c08000ba6e91c261
-  specs:
-    rufus-mnemo (1.2.2)
-
 GEM
   remote: http://rubygems.org/
   specs:
+    activemodel (3.1.0)
+      activesupport (= 3.1.0)
+      bcrypt-ruby (~> 3.0.0)
+      builder (~> 3.0.0)
+      i18n (~> 0.6)
+    activesupport (3.1.0)
+      multi_json (~> 1.0)
+    bcrypt-ruby (3.0.1)
+    bson (1.4.0)
+    bson_ext (1.4.0)
+    builder (3.0.0)
     colored (1.2)
     eventmachine (0.12.10)
+    i18n (0.6.0)
+    mongo (1.4.0)
+      bson (= 1.4.0)
+    mongoid (2.3.0)
+      activemodel (~> 3.1)
+      mongo (~> 1.4)
+      tzinfo (~> 0.3.22)
+    multi_json (1.0.3)
     state_machine (1.0.2)
+    tzinfo (0.3.30)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
+  bson_ext
   colored
   eventmachine
-  rufus-mnemo!
+  mongoid
   state_machine

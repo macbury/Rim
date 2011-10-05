@@ -3,7 +3,7 @@ module Rim
     Mechanisms = ['PLAIN', 'DIGEST-MD5']
     Namespace = 'urn:ietf:params:xml:ns:xmpp-sasl'
     
-    attr_accessor :mechanism, :nonce, :done
+    attr_accessor :mechanism, :nonce, :done, :user
     def h(s)
       Digest::MD5.digest(s)
     end
@@ -72,10 +72,10 @@ module Rim
     
     def parse_response(stream)
       node = stream.node
-      unless node[:content].empty?
+      unless node.text.empty?
         re = /((?:[\w-]+)\s*=\s*(?:(?:"[^"]+")|(?:[^,]+)))/
         response = {}
-        Base64.decode64(node[:content]).scan(re) do |kv|
+        Base64.decode64(node.text).scan(re) do |kv|
           k, v = kv[0].split('=', 2)
           v.gsub!(/^"(.*)"$/, '\1')
           response[k] = v
@@ -86,6 +86,13 @@ module Rim
         node   = response['username'].downcase
         domain = response['realm'].downcase
         @jid   = node + '@' + domain
+        
+        #begin
+        #  self.user = User.where(login: node).first
+        #rescue Mongoid::Errors::DocumentNotFound
+        #  Rim.logger.info "Undefined user #{node}"
+        #  close and return
+        #end
         
         Rim.logger.info "Authenticating: #{@jid}"
         

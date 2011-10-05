@@ -10,10 +10,12 @@ require "rexml/formatters/default"
 require "base64"
 require "state_machine"
 require "colored"
-require "rufus-mnemo"
 require "base64"
 require "openssl"
 require "digest/md5"
+require "mongoid"
+require 'ostruct'
+require "yaml"
 
 require "./lib/extend"
 require "./lib/state/idle"
@@ -22,5 +24,6 @@ require "./lib/connection"
 require "./lib/stream"
 require "./lib/auth"
 require "./lib/response"
+require "./lib/user"
 
 Rim.start
