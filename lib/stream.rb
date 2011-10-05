@@ -5,28 +5,14 @@ module Rim
     
     Namespace = 'http://etherx.jabber.org/streams'
     
-    attr_accessor :connection, :type, :stream_id, :host
+    attr_accessor :connection, :type, :stream_id, :host, :node
     
     state_machine :initial => :idle do
       state :idle do
         
-        def parse(tag,attributes)
-          if tag == "stream:stream"
-            self.type = (attributes["xmlns"] == "jabber:client") ? Rim::Stream::Client : Rim::Stream::Server
-
-            unless attributes['xmlns:stream'] == Rim::Stream::Namespace
-              error('invalid-namespace')
-              Rim.logger.error "Reciver invalid xmlns:stream: #{attributes['xmlns:stream'].inspect}, should be #{Rim::Stream::Namespace.inspect}"
-              close
-              return
-            end
-
-            unless ['jabber:client', 'jabber:server'].include?(attributes['xmlns']) 
-              Rim.logger.error "Reciver invalid xmlns #{attributes['xmlns'].inspect}, should be #{['jabber:client', 'jabber:server'].join(" or ")}"
-              error('invalid-namespace')
-              close
-              return
-            end
+        def response
+          if self.node[:name] == "stream:stream"
+            self.type = (self.node[:attributes]["xmlns"] == "jabber:client") ? Rim::Stream::Client : Rim::Stream::Server
 
             if server?
               Rim.logger.info "Server has connected..."
@@ -49,19 +35,20 @@ module Rim
       
       state :client_auth do
         
-        def parse(tag,attributes)
-          if tag == "auth"
-            Rim.logger.info "Authenticating client using #{attributes["mechanism"]}"
-            
-            chellange = REXML::Element.new('challenge')
-            chellange.add_namespace('urn:ietf:params:xml:ns:xmpp-sasl')
-            chellange.text = "cmVhbG09InNvbWVyZWFsbSIsbm9uY2U9Ik9BNk1HOXRFUUdtMmhoIixxb3A9ImF1dGgiLGNoYXJzZXQ9dXRmLTgsYWxnb3JpdGhtPW1kNS1zZXNzCg=="
-            write(chellange)
+        def response
+          if self.node[:name] == "auth" && @auth.support?(self.node[:attributes]["mechanism"])
+            @auth.use(self.node[:attributes]["mechanism"])
+            Rim.logger.info "Sending chellange for client using #{@auth.mechanism} mechanism"
+            wait_for_auth_response
+            write(@auth.prepare_chellange)
+          else
+            Rim.logger.info "Unknown mechanism"
+            close
           end
         end
         
         def send_head(attr)
-          Rim.logger.info "Sending header and feratures."
+          Rim.logger.info "Sending header and features."
           
           self.stream_id = "rim_"+(Time.new.to_f*100000).to_i.to_s(32)
           connection_type_name = client? ? "jabber:client" : "jabber:server"
@@ -75,29 +62,85 @@ module Rim
     
           write(stanza)
           
-          feature = REXML::Element.new('stream:features')
-          mech = REXML::Element.new('mechanisms')
-          mech.add_namespace('urn:ietf:params:xml:ns:xmpp-sasl')
+          @auth = Rim::Auth.new
+          features = REXML::Element.new('stream:features')
+          features << @auth.features
           
-          ['PLAIN', 'DIGEST-MD5'].each do |con_type|
-            mechxml = REXML::Element.new('mechanism')
-            mechxml.text = con_type
-            mech << mechxml
-          end
-          
-          feature << mech
-          
-          write(feature)
+          write(features)
         end
+      end
+      
+      event :wait_for_auth_response do
+        transition :client_auth => :wait_for_auth_response
+      end
+      
+      state :wait_for_auth_response do
+        
+        def response
+          @auth.parse_response(self)
+          wait_for_auth_success
+        end
+        
+      end
+      
+      event :wait_for_auth_success do
+        transition :wait_for_auth_response => :wait_for_auth_success
+      end
+      
+      state :wait_for_auth_success do
+        def response
+          if self.node[:name] == "response" #&& self.node[:attributes] == "urn:ietf:params:xml:ns:xmpp-sasl"
+            Rim.logger.info "Sending success response"
+            
+            write(@auth.success)
+            begin_stream_with_features
+          else
+            Rim.logger.info "No success response"
+            close
+          end
+        end
+      end
+      
+      event :begin_stream_with_features do
+        transition :wait_for_auth_success => :stream_with_features
+      end
+      
+      state :stream_with_features do
+        def response
+          if self.node[:name] == "stream:stream"
+            Rim.logger.info "Sending stream with features."
+            connection_type_name = client? ? "jabber:client" : "jabber:server"
+            stanza = %(<?xml version='1.0'?>) +
+                     %(<stream:stream ) +
+                     %(xmlns='#{connection_type_name}' ) +
+                     %(xmlns:stream='http://etherx.jabber.org/streams' ) +
+                     %(from='#{self.host}' ) +
+                     %(id='#{self.stream_id}' ) +
+                     %(version='1.0'>)
+      
+            write(stanza)
+            
+            features = REXML::Element.new('stream:features')
+            write features
+          else
+            Rim.logger.info "Udefined tag #{self.node[:name]}"
+            close
+          end
+            
+        end
+        
       end
     end
     
     def read(content)
       Rim.logger.debug content.blue
+      
       @parser.source.buffer << content
       @parser.parse
-      # parse(content)
-      #self.send(:response, content) if respond_to?(:response)
+      
+      #if respond_to?(:recive, true)
+      #  self.send(:recive, content)
+      #end
     end
     
     def write(content)
@@ -136,9 +179,25 @@ module Rim
       @formatter = REXML::Formatters::Default.new
       
       @parser  = REXML::Parsers::SAX2Parser.new('')
-
+      self.node = {}
+      
       @parser.listen(:start_element) do |uri, localname, qname, attributes|
-        self.send(:parse, qname, attributes) if respond_to?(:parse)
+        Rim.logger.debug ["Start tag:", qname, attributes].join(" ")
+        self.node = { :name => qname, :attributes => attributes, :content => "" }
+        response if qname == "stream:stream"
+      end
+      
+      @parser.listen(:characters) do |text|
+        self.node[:content] += text
+      end
+      
+      @parser.listen(:end_element) do |uri, name, n|
+        Rim.logger.debug ["End tag:", uri, name, n].join(" ")
+        if name == "stream:stream"
+          close
+        else
+          response
+        end
       end
       
       Rim.logger.debug "XML dump legend:"
@@ -156,7 +215,7 @@ module Rim
 
     def close
       write("</stream:stream>")
-      self.connection.close_connection(true)
+      self.connection.close_connection(false)
     end
   end
 end

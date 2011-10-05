@@ -1,11 +1,13 @@
 module Rim
   def self.logger
     if @logger.nil?
+      @line_number = 0
       @logger = Logger.new(STDOUT)
       @logger.formatter = proc { |severity, datetime, progname, msg|
         type = severity
         if type == "DEBUG"
-          msg + "\n"
+          @line_number += 1
+          sprintf("#{"%5d".bold} %s\n", @line_number, msg)
         else 
           type = type.bold
           "#{type} #{datetime.strftime("%T %D")}: #{msg}\n"

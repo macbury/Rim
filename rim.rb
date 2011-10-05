@@ -11,10 +11,16 @@ require "base64"
 require "state_machine"
 require "colored"
 require "rufus-mnemo"
+require "base64"
+require "openssl"
+require "digest/md5"
 
 require "./lib/extend"
+require "./lib/state/idle"
 require "./lib/rim"
 require "./lib/connection"
 require "./lib/stream"
-require "./lib/xmpp"
+require "./lib/auth"
+require "./lib/response"
+
 Rim.start
