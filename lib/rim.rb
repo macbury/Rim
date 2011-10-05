@@ -19,6 +19,9 @@ module Rim
   end
   
   def self.start
+    Mongoid.logger = Rim.logger
+    Mongoid.load!("./config/database.yml")
+    
     EventMachine.run do
       Signal.trap("INT")  { EventMachine.stop }
       Signal.trap("TERM") { EventMachine.stop }
