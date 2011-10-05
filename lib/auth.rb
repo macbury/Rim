@@ -87,12 +87,12 @@ module Rim
         domain = response['realm'].downcase
         @jid   = node + '@' + domain
         
-        #begin
-        #  self.user = User.where(login: node).first
-        #rescue Mongoid::Errors::DocumentNotFound
-        #  Rim.logger.info "Undefined user #{node}"
-        #  close and return
-        #end
+        begin
+          self.user = User.where(login: node).first
+        rescue Mongoid::Errors::DocumentNotFound
+          Rim.logger.info "Undefined user #{node}"
+          close and return
+        end
         
         Rim.logger.info "Authenticating: #{@jid}"
         

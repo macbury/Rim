@@ -32,9 +32,9 @@ module Rim
     Mongoid.load!("./config/mongoid.yml")
     
     Rim.logger.info "Connecting to database..."
-    #Mongoid.configure do |config|
-    #  config.master = Mongo::Connection.new.db("rim")
-    #end
+    Mongoid.configure do |config|
+      config.master = Mongo::Connection.new.db("rim")
+    end
     
     EventMachine.run do
       Signal.trap("INT")  { EventMachine.stop }
