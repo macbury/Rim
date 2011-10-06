@@ -3,7 +3,7 @@ module Rim
     Mechanisms = ['PLAIN', 'DIGEST-MD5']
     Namespace = 'urn:ietf:params:xml:ns:xmpp-sasl'
     
-    attr_accessor :mechanism, :nonce, :done
+    attr_accessor :mechanism, :nonce, :done, :user
     def h(s)
       Digest::MD5.digest(s)
     end
@@ -72,10 +72,10 @@ module Rim
     
     def parse_response(stream)
       node = stream.node
-      unless node[:content].empty?
+      unless node.text.empty?
         re = /((?:[\w-]+)\s*=\s*(?:(?:"[^"]+")|(?:[^,]+)))/
         response = {}
-        Base64.decode64(node[:content]).scan(re) do |kv|
+        Base64.decode64(node.text).scan(re) do |kv|
           k, v = kv[0].split('=', 2)
           v.gsub!(/^"(.*)"$/, '\1')
           response[k] = v
@@ -87,21 +87,22 @@ module Rim
         domain = response['realm'].downcase
         @jid   = node + '@' + domain
         
-        Rim.logger.info "Authenticating: #{@jid}"
+        Rim.logger.info "Searching for user in db: #{node}"
+        self.user = User.where(login: node).first
         
-        password = "password"
+        if self.user.nil?
+          stream.failure('not-authorized')
+          #stream.close
+          return
+        end
+        
+        password = self.user.password
         
         myresp, a1 = response_value(node, domain, response['digest-uri'], password, response['nonce'], response['cnonce'], response['qop'], response['authzid'])
         
         unless myresp == response['response']
           Rim.logger.info "Not authorized: #{myresp} != #{response['response']}"
-          fai = REXML::Element.new('failure')
-          fai.add_namespace('urn:ietf:params:xml:ns:xmpp-sasl')
-          fai << REXML::Element.new('not-authorized')
-  
-          stream.write fai
-  
-          stream.close
+          stream.failure('not-authorized')
         else
           Rim.logger.info "Authorized: #{@jid}"
           a2 = ":%s" % response['digest-uri']

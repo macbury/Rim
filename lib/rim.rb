@@ -8,6 +8,8 @@ module Rim
         if type == "DEBUG"
           @line_number += 1
           sprintf("#{"%5d".bold} %s\n", @line_number, msg)
+        elsif type == "WARN"
+          ("WARN".bold.yellow + " #{msg.yellow}\n".yellow).yellow
         else 
           type = type.bold
           "#{type} #{datetime.strftime("%T %D")}: #{msg}\n"
@@ -18,16 +20,37 @@ module Rim
     @logger
   end
   
+  def self.config
+    if @config.nil?
+      yaml = YAML.load(File.open('./config/conf.yml', 'r'))
+      @config = OpenStruct.new(yaml)
+    end
+    @config
+  end
+  
   def self.start
+<<<<<<< HEAD
     Mongoid.logger = Rim.logger
     Mongoid.load!("./config/database.yml")
     
+=======
+    Rim.logger.info "Loading configuration"
+    Rim.config
+    Mongoid.logger = Rim.logger
+    Mongoid.load!("./config/mongoid.yml")
+    
+    Rim.logger.info "Connecting to database..."
+    Mongoid.configure do |config|
+      config.master = Mongo::Connection.new.db("rim")
+    end
+    #User.create(:login => "test", :password => "password")
+>>>>>>> 1701f50a84bcb43379322e3a88448341ac40d1fb
     EventMachine.run do
       Signal.trap("INT")  { EventMachine.stop }
       Signal.trap("TERM") { EventMachine.stop }
       
-      Rim.logger.info "Staring server..."
-      EventMachine.start_server("localhost", 5222, Rim::Connection)
+      Rim.logger.info "Staring server at: #{Rim.config.realm} on port #{Rim.config.port}"
+      EventMachine.start_server(Rim.config.realm, Rim.config.port, Rim::Connection)
     end
   end
 end
