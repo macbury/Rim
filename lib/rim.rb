@@ -8,6 +8,8 @@ module Rim
         if type == "DEBUG"
           @line_number += 1
           sprintf("#{"%5d".bold} %s\n", @line_number, msg)
+        elsif type == "WARN"
+          ("WARN".bold.yellow + " #{msg.yellow}\n".yellow).yellow
         else 
           type = type.bold
           "#{type} #{datetime.strftime("%T %D")}: #{msg}\n"

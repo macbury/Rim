@@ -15,7 +15,7 @@ module Rim
             self.type = (self.node.attributes["xmlns"] == "jabber:client") ? Rim::Stream::Client : Rim::Stream::Server
 
             if server?
-              Rim.logger.info "Server has connected..."
+              Rim.logger.warn "Server has connected..."
               close
             elsif client?
               Rim.logger.info "Client have connected..."
@@ -42,7 +42,7 @@ module Rim
             wait_for_auth_response
             write(@auth.prepare_chellange)
           else
-            Rim.logger.info "Unknown mechanism"
+            Rim.logger.warn "Unknown mechanism Implement!"
             close
           end
         end
@@ -95,7 +95,7 @@ module Rim
             write(@auth.success)
             begin_stream_with_features
           else
-            Rim.logger.info "No success response"
+            Rim.logger.warn "No success response"
             close
           end
         end
@@ -127,7 +127,7 @@ module Rim
             features << recbind
             write features
           else
-            Rim.logger.info "Udefined tag #{self.node.name}"
+            Rim.logger.warn "Udefined tag #{self.node.name}"
             close
           end
             
