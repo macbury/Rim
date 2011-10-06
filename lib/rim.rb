@@ -29,6 +29,7 @@ module Rim
   def self.start
     Rim.logger.info "Loading configuration"
     Rim.config
+    Mongoid.logger = Rim.logger
     Mongoid.load!("./config/mongoid.yml")
     
     Rim.logger.info "Connecting to database..."

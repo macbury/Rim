@@ -172,6 +172,14 @@ module Rim
       close
     end
     
+    def failure(msg)
+      fai = REXML::Element.new('failure')
+      fai.add_namespace('urn:ietf:params:xml:ns:xmpp-sasl')
+      fai << REXML::Element.new(msg)
+
+      write fai
+    end
+    
     def initialize(host, connection)
       super()
       self.host = host

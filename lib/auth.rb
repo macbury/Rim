@@ -87,28 +87,22 @@ module Rim
         domain = response['realm'].downcase
         @jid   = node + '@' + domain
         
-        begin
-          self.user = User.where(login: node).first
-        rescue Mongoid::Errors::DocumentNotFound
-          Rim.logger.info "Undefined user #{node}"
-          close and return
+        Rim.logger.info "Searching for user in db: #{node}"
+        self.user = User.where(login: node).first
+        
+        if self.user.nil?
+          stream.failure('not-authorized')
+          #stream.close
+          return
         end
         
-        Rim.logger.info "Authenticating: #{@jid}"
-        
-        password = "password"
+        password = self.user.password
         
         myresp, a1 = response_value(node, domain, response['digest-uri'], password, response['nonce'], response['cnonce'], response['qop'], response['authzid'])
         
         unless myresp == response['response']
           Rim.logger.info "Not authorized: #{myresp} != #{response['response']}"
-          fai = REXML::Element.new('failure')
-          fai.add_namespace('urn:ietf:params:xml:ns:xmpp-sasl')
-          fai << REXML::Element.new('not-authorized')
-  
-          stream.write fai
-  
-          stream.close
+          stream.failure('not-authorized')
         else
           Rim.logger.info "Authorized: #{@jid}"
           a2 = ":%s" % response['digest-uri']
