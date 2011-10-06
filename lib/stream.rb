@@ -96,7 +96,7 @@ module Rim
             begin_stream_with_features
           else
             Rim.logger.warn "No success response"
-            close
+            failure('not-authorized')
           end
         end
       end
@@ -137,6 +137,7 @@ module Rim
     end
     
     def read(content)
+      Rim.logger.debug "<!-- IN -->".blue
       Rim.logger.debug content.blue
       
       @parser.source.buffer << content
@@ -154,6 +155,7 @@ module Rim
       else
         out = content
       end
+      Rim.logger.debug "<!-- OUT -->".green
       Rim.logger.debug out.green
       self.connection.send_data(out)
     end

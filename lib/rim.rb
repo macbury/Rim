@@ -29,11 +29,6 @@ module Rim
   end
   
   def self.start
-<<<<<<< HEAD
-    Mongoid.logger = Rim.logger
-    Mongoid.load!("./config/database.yml")
-    
-=======
     Rim.logger.info "Loading configuration"
     Rim.config
     Mongoid.logger = Rim.logger
@@ -43,8 +38,8 @@ module Rim
     Mongoid.configure do |config|
       config.master = Mongo::Connection.new.db("rim")
     end
-    #User.create(:login => "test", :password => "password")
->>>>>>> 1701f50a84bcb43379322e3a88448341ac40d1fb
+    User.create(:login => "test", :password => "password")
+
     EventMachine.run do
       Signal.trap("INT")  { EventMachine.stop }
       Signal.trap("TERM") { EventMachine.stop }
