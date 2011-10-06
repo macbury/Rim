@@ -36,7 +36,7 @@ module Rim
     Mongoid.configure do |config|
       config.master = Mongo::Connection.new.db("rim")
     end
-    
+    #User.create(:login => "test", :password => "password")
     EventMachine.run do
       Signal.trap("INT")  { EventMachine.stop }
       Signal.trap("TERM") { EventMachine.stop }

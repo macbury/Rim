@@ -121,6 +121,10 @@ module Rim
             write(stanza)
             
             features = REXML::Element.new('stream:features')
+            recbind = REXML::Element.new('bind')
+            recbind.add_namespace('urn:ietf:params:xml:ns:xmpp-bind')
+            recbind.add_element(REXML::Element.new('required')) if client?
+            features << recbind
             write features
           else
             Rim.logger.info "Udefined tag #{self.node.name}"
