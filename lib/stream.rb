@@ -5,7 +5,7 @@ module Rim
     
     Namespace = 'http://etherx.jabber.org/streams'
     
-    attr_accessor :connection, :type, :stream_id, :host, :node
+    attr_accessor :connection, :type, :stream_id, :host, :node, :resource
     
     state_machine :initial => :idle do
       state :idle do
@@ -20,6 +20,12 @@ module Rim
             elsif client?
               Rim.logger.info "Client have connected..."
               run_client_auth
+              send_head
+              
+              @auth = Rim::Auth.new
+              features = REXML::Element.new('stream:features')
+              features << @auth.features
+              write(features)
             else
               close
             end
@@ -28,13 +34,11 @@ module Rim
         
       end
       
-      after_transition :idle => :client_auth, :do => :send_head
       event :run_client_auth do
         transition :idle => :client_auth
       end
       
       state :client_auth do
-        
         def response
           if self.node.name == "auth" && @auth.support?(self.node.attributes["mechanism"])
             @auth.use(self.node.attributes["mechanism"])
@@ -45,28 +49,6 @@ module Rim
             Rim.logger.warn "Unknown mechanism Implement!"
             close
           end
-        end
-        
-        def send_head(attr)
-          Rim.logger.info "Sending header and features."
-          
-          self.stream_id = "rim_"+(Time.new.to_f*100000).to_i.to_s(32)
-          connection_type_name = client? ? "jabber:client" : "jabber:server"
-          stanza = %(<?xml version='1.0'?>) +
-                   %(<stream:stream ) +
-                   %(xmlns='#{connection_type_name}' ) +
-                   %(xmlns:stream='http://etherx.jabber.org/streams' ) +
-                   %(from='#{self.host}' ) +
-                   %(id='#{self.stream_id}' ) +
-                   %(version='1.0'>)
-    
-          write(stanza)
-          
-          @auth = Rim::Auth.new
-          features = REXML::Element.new('stream:features')
-          features << @auth.features
-          
-          write(features)
         end
       end
       
@@ -108,26 +90,18 @@ module Rim
       state :stream_with_features do
         def response
           if self.node.name == "stream"
-            Rim.logger.info "Sending stream with features."
-            connection_type_name = client? ? "jabber:client" : "jabber:server"
-            stanza = %(<?xml version='1.0'?>) +
-                     %(<stream:stream ) +
-                     %(xmlns='#{connection_type_name}' ) +
-                     %(xmlns:stream='http://etherx.jabber.org/streams' ) +
-                     %(from='#{self.host}' ) +
-                     %(id='#{self.stream_id}' ) +
-                     %(version='1.0'>)
-      
-            write(stanza)
+            send_head
             
             features = REXML::Element.new('stream:features')
             recbind = REXML::Element.new('bind')
             recbind.add_namespace('urn:ietf:params:xml:ns:xmpp-bind')
             recbind.add_element(REXML::Element.new('required')) if client?
             features << recbind
+            
             write features
           elsif self.node.name == "iq"
-            Rim.logger.warn "Udefined tag #{self.node.name}"
+            self.resource = Rim::Resource.parse(self.node)
+            Rim.logger.info "User resource is #{self.resource.name}"
             #close
           end
             
@@ -136,13 +110,28 @@ module Rim
       end
     end
     
+    def send_head
+      self.stream_id ||= Rim::Stream.uid
+      
+      Rim.logger.info "Sending stream header."
+      connection_type_name = client? ? "jabber:client" : "jabber:server"
+      stanza = %(<?xml version='1.0'?>) +
+               %(<stream:stream ) +
+               %(xmlns='#{connection_type_name}' ) +
+               %(xmlns:stream='http://etherx.jabber.org/streams' ) +
+               %(from='#{self.host}' ) +
+               %(id='#{self.stream_id}' ) +
+               %(version='1.0'>)
+      write(stanza)
+    end
+    
     def read(content)
-      if Rim.env == :development
-        Rim.logger.debug "<!-- IN -->".blue
-        content.each_line do |line|
-          Rim.logger.debug line.gsub("\n", "").blue 
-        end
-      end
+      #if Rim.env == :development
+      #  Rim.logger.debug "<!-- IN -->".blue
+      #  content.each_line do |line|
+      #    Rim.logger.debug line.gsub("\n", "").blue 
+      #  end
+      #end
       @parser.source.buffer << content
       @parser.parse
       
@@ -168,30 +157,12 @@ module Rim
       self.connection.send_data(out)
     end
     
-    def error(defined_condition, application_error = nil)
-      err = REXML::Element.new('stream:error')
-      na  = REXML::Element.new(defined_condition)
-
-      na.add_namespace('urn:ietf:params:xml:ns:xmpp-streams')
-      err << na
-
-      if application_error
-        ae      = REXML::Element.new(application_error['name'])
-        ae.text = application_error['text'] if application_error['text']
-
-        ae.add_namespace('urn:xmpp:errors')
-        err << ae
-      end
-      write(err)
-      close
-    end
-    
     
     def initialize(host, connection)
       super()
       self.host = host
       self.connection = connection
-      @formatter = REXML::Formatters::Pretty.new
+      @formatter = Rim.env == :development ? REXML::Formatters::Pretty.new : REXML::Formatters::Default.new
       
       prepare_parser
       
@@ -206,9 +177,20 @@ module Rim
     
     def _process_response
       begin
+        if Rim.env == :development
+          content = ""
+          @formatter.write(self.node, content)
+          Rim.logger.debug "<!-- IN -->".blue
+          content.each_line do |line|
+            Rim.logger.debug line.gsub("\n", "").blue 
+          end
+        end
         response
       rescue Rim::FailureException => exception
         self.write exception.xml
+      rescue Rim::ErrorException => exception
+        self.write exception.xml
+        close
       end
     end
     
@@ -259,6 +241,10 @@ module Rim
     def close
       write("</stream:stream>")
       self.connection.close_connection(false)
+    end
+    
+    def self.uid
+      "rim_"+(Time.new.to_f*100000).to_i.to_s(32)
     end
   end
 end
