@@ -96,7 +96,7 @@ module Rim
             begin_stream_with_features
           else
             Rim.logger.warn "No success response"
-            failure('not-authorized')
+            raise FailureException.not_authorized(@auth.namespace)
           end
         end
       end
@@ -178,13 +178,6 @@ module Rim
       close
     end
     
-    def failure(msg)
-      fai = REXML::Element.new('failure')
-      fai.add_namespace('urn:ietf:params:xml:ns:xmpp-sasl')
-      fai << REXML::Element.new(msg)
-
-      write fai
-    end
     
     def initialize(host, connection)
       super()
