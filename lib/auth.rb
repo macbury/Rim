@@ -3,7 +3,7 @@ module Rim
     Mechanisms = ['PLAIN', 'DIGEST-MD5']
     Namespace = 'urn:ietf:params:xml:ns:xmpp-sasl'
     
-    attr_accessor :mechanism, :nonce, :done, :user
+    attr_accessor :mechanism, :nonce, :done, :user, :namespace
     def h(s)
       Digest::MD5.digest(s)
     end
@@ -11,12 +11,14 @@ module Rim
     def hh(s)
       Digest::MD5.hexdigest(s)
     end
+    
     def initialize
+      self.namespace = Rim::Auth::Namespace
     end
     
     def features
       mech = REXML::Element.new('mechanisms')
-      mech.add_namespace(Rim::Auth::Namespace)
+      mech.add_namespace(self.namespace)
       
       Rim::Auth::Mechanisms.each do |con_type|
         mechxml = REXML::Element.new('mechanism')
@@ -29,7 +31,7 @@ module Rim
     
     def success
       success = REXML::Element.new("success")
-      success.add_namespace('urn:ietf:params:xml:ns:xmpp-sasl')
+      success.add_namespace(self.namespace)
       success
     end
     
@@ -47,7 +49,7 @@ module Rim
     
     def prepare_chellange
       chellange = REXML::Element.new('challenge')
-      chellange.add_namespace('urn:ietf:params:xml:ns:xmpp-sasl')
+      chellange.add_namespace(self.namespace)
       
       self.nonce = ((Time.new.to_f * 10000)*rand).to_i.to_s(32)
       output = "realm=#{self.realm.inspect},nonce=#{self.nonce},qop=\"auth\",charset=utf-8,algorithm=md5-sess"
@@ -91,9 +93,7 @@ module Rim
         self.user = User.where(login: node).first
         
         if self.user.nil?
-          stream.failure('not-authorized')
-          #stream.close
-          return
+          raise FailureException.not_authorized(self.namespace)
         end
         
         password = self.user.password
@@ -102,7 +102,7 @@ module Rim
         
         unless myresp == response['response']
           Rim.logger.info "Not authorized: #{myresp} != #{response['response']}"
-          stream.failure('not-authorized')
+          raise FailureException.not_authorized(self.namespace)
         else
           Rim.logger.info "Authorized: #{@jid}"
           a2 = ":%s" % response['digest-uri']
@@ -113,7 +113,7 @@ module Rim
           rspauth.gsub!("\n", '')
       
           chal = REXML::Element.new('challenge')
-          chal.add_namespace('urn:ietf:params:xml:ns:xmpp-sasl')
+          chal.add_namespace(self.namespace)
           chal.text = rspauth
           
           stream.write chal

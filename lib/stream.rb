@@ -203,6 +203,14 @@ module Rim
       @current
     end
     
+    def _process_response
+      begin
+        response
+      rescue Rim::FailureException => exception
+        self.write exception.xml
+      end
+    end
+    
     def prepare_parser
       @parser  = REXML::Parsers::SAX2Parser.new('')
       @current = nil
@@ -214,7 +222,7 @@ module Rim
         @current = @current.nil? ? e : @current.add_element(e)
         
         if @current.name == 'stream'
-          response
+          _process_response
           @current = nil
         end
       end
@@ -223,7 +231,7 @@ module Rim
         if qname == 'stream:stream' and @current.nil?
           close
         else
-          response unless @current.parent
+          _process_response unless @current.parent
           @current = @current.parent
         end
       end

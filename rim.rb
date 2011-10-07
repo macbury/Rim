@@ -25,5 +25,6 @@ require "./lib/stream"
 require "./lib/auth"
 require "./lib/response"
 require "./lib/user"
+require "./lib/failure_exception"
 
 Rim.start
