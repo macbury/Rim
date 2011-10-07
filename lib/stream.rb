@@ -124,6 +124,8 @@ module Rim
             recbind = REXML::Element.new('bind')
             recbind.add_namespace('urn:ietf:params:xml:ns:xmpp-bind')
             recbind.add_element(REXML::Element.new('required')) if client?
+            
+            
             features << recbind
             write features
           else
