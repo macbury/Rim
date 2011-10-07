@@ -20,6 +20,10 @@ module Rim
     @logger
   end
   
+  def self.env
+    :development
+  end
+  
   def self.config
     if @config.nil?
       yaml = YAML.load(File.open('./config/conf.yml', 'r'))

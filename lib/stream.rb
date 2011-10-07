@@ -126,9 +126,9 @@ module Rim
             recbind.add_element(REXML::Element.new('required')) if client?
             features << recbind
             write features
-          else
+          elsif self.node.name == "iq"
             Rim.logger.warn "Udefined tag #{self.node.name}"
-            close
+            #close
           end
             
         end
@@ -137,9 +137,12 @@ module Rim
     end
     
     def read(content)
-      Rim.logger.debug "<!-- IN -->".blue
-      Rim.logger.debug content.blue
-      
+      if Rim.env == :development
+        Rim.logger.debug "<!-- IN -->".blue
+        content.each_line do |line|
+          Rim.logger.debug line.gsub("\n", "").blue 
+        end
+      end
       @parser.source.buffer << content
       @parser.parse
       
@@ -155,8 +158,13 @@ module Rim
       else
         out = content
       end
-      Rim.logger.debug "<!-- OUT -->".green
-      Rim.logger.debug out.green
+      if Rim.env == :development
+        Rim.logger.debug "<!-- OUT -->".green
+        out.each_line do |line|
+          
+          Rim.logger.debug line.gsub("\n", "").green 
+        end
+      end
       self.connection.send_data(out)
     end
     
@@ -183,7 +191,7 @@ module Rim
       super()
       self.host = host
       self.connection = connection
-      @formatter = REXML::Formatters::Default.new
+      @formatter = REXML::Formatters::Pretty.new
       
       prepare_parser
       
