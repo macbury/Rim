@@ -6,7 +6,7 @@ require "logger"
 require 'socket'
 require 'rexml/document'
 require 'rexml/parsers/sax2parser'
-require "rexml/formatters/default"
+require "rexml/formatters/transitive"
 require "base64"
 require "state_machine"
 require "colored"
@@ -28,5 +28,7 @@ require "./lib/user"
 require "./lib/failure_exception"
 require "./lib/error_exception"
 require "./lib/resource"
+require "./lib/node"
+require "./lib/iq"
 
 Rim.start

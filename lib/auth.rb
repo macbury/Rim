@@ -72,6 +72,10 @@ module Rim
       [hh("#{hh(a1)}:#{nonce}:00000001:#{cnonce}:#{qop}:#{hh(a2)}"), a1]
     end
     
+    def jid
+      @jid
+    end
+    
     def parse_response(stream)
       node = stream.node
       unless node.text.empty?

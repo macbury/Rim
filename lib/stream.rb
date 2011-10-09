@@ -89,22 +89,32 @@ module Rim
       
       state :stream_with_features do
         def response
-          if self.node.name == "stream"
+          if self.node.is?(:stream)
             send_head
             
             features = REXML::Element.new('stream:features')
+            
             recbind = REXML::Element.new('bind')
             recbind.add_namespace('urn:ietf:params:xml:ns:xmpp-bind')
             recbind.add_element(REXML::Element.new('required')) if client?
             
+            sess = REXML::Element.new('session')
+            sess.add_namespace('urn:ietf:params:xml:ns:xmpp-session')
+            sess.add_element(REXML::Element.new('optional'))
             
+            features << sess
             features << recbind
             
             write features
-          elsif self.node.name == "iq"
-            self.resource = Rim::Resource.parse(self.node)
-            Rim.logger.info "User resource is #{self.resource.name}"
-            #close
+          elsif self.node.is?(:iq)
+            if self.node.bind?
+              self.resource = Rim::Resource.parse(self.node)
+              Rim.logger.info "User resource is #{self.resource.name}"
+              write self.resource.success(@auth.jid)
+            elsif self.node.session?
+              Rim.logger.info "Session silently ignored"
+              write self.node.make_result
+            end
           end
             
         end
@@ -159,12 +169,16 @@ module Rim
       self.connection.send_data(out)
     end
     
+    def jid
+      return if self.resource.name
+      @auth.jid + "/" + self.resource.name
+    end
     
     def initialize(host, connection)
       super()
       self.host = host
       self.connection = connection
-      @formatter = Rim.env == :development ? REXML::Formatters::Pretty.new : REXML::Formatters::Default.new
+      @formatter = Rim.env == :development ? REXML::Formatters::Transitive.new : REXML::Formatters::Default.new
       
       prepare_parser
       
@@ -193,6 +207,10 @@ module Rim
       rescue Rim::ErrorException => exception
         self.write exception.xml
         close
+      rescue Exception => e
+        Rim.logger.error e.to_s
+        e.backtrace.each { |line| Rim.logger.debug line.red }
+        write(Rim::ErrorException.new(self.node, 'internal-server-error', 'wait').xml)
       end
     end
     
@@ -201,7 +219,11 @@ module Rim
       @current = nil
 
       @parser.listen(:start_element) do |uri, localname, qname, attributes|
-        e = REXML::Element.new(qname)
+        if qname == "iq"
+          e = Rim::IQ.new
+        else
+          e = Rim::Node.new(qname)
+        end
         e.add_attributes(attributes)
 
         @current = @current.nil? ? e : @current.add_element(e)
@@ -246,7 +268,7 @@ module Rim
     end
     
     def self.uid
-      "rim_"+(Time.new.to_f*100000).to_i.to_s(32)
+      Rim.uid
     end
   end
 end

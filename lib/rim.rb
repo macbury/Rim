@@ -1,4 +1,11 @@
 module Rim
+  
+  def self.uid
+    @uid ||= 0
+    @uid += 1
+    "rim_#{@uid}"
+  end
+  
   def self.logger
     if @logger.nil?
       @line_number = 0
@@ -7,12 +14,14 @@ module Rim
         type = severity
         if type == "DEBUG"
           @line_number += 1
-          sprintf("#{"%5d".bold} %s\n", @line_number, msg)
+          sprintf("#{"%5d".bold.black_on_white} %s\n", @line_number, msg)
         elsif type == "WARN"
           ("WARN".bold.yellow + " #{msg.yellow}\n".yellow).yellow
+        elsif type == "ERROR"
+          ("ERROR".bold.red + " #{msg.red}\n".red).red
         else 
           type = type.bold
-          "#{type} #{datetime.strftime("%T %D")}: #{msg}\n"
+          "#{" #{type}".bold.black_on_white} #{datetime.strftime("%T %D")}: #{msg}\n"
         end
         
       }
@@ -26,17 +35,24 @@ module Rim
   
   def self.config
     if @config.nil?
-      yaml = YAML.load(File.open('./config/conf.yml', 'r'))
+      yaml = YAML.load(File.open(Rim.config_path, 'r'))
       @config = OpenStruct.new(yaml)
     end
     @config
   end
   
+  def self.config_path
+    File.expand_path('./config/conf.yml')
+  end
+  
   def self.start
-    Rim.logger.info "Loading configuration"
+    Rim.logger.info "Starting server..."
+    Rim.logger.info "Loading configuration: #{Rim.config_path}"
     Rim.config
     Mongoid.logger = Rim.logger
     Mongoid.load!("./config/mongoid.yml")
+    
+    Rim.logger.info "Running in env #{Rim.env}"
     
     Rim.logger.info "Connecting to database..."
     Mongoid.configure do |config|
