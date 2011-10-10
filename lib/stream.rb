@@ -114,6 +114,14 @@ module Rim
             elsif self.node.session?
               Rim.logger.info "Session silently ignored"
               write self.node.make_result
+            elsif self.node.query?
+              
+              if self.node.query.discoInfo?
+                Rim.logger.info "Sending discovery info"
+              elsif self.node.query.discoItems?
+                Rim.logger.info "Sending discovery items"
+              end
+              
             end
           end
             
@@ -221,6 +229,8 @@ module Rim
       @parser.listen(:start_element) do |uri, localname, qname, attributes|
         if qname == "iq"
           e = Rim::IQ.new
+        elsif qname == "query"
+          e = Rim::Query.new
         else
           e = Rim::Node.new(qname)
         end

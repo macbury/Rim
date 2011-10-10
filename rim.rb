@@ -30,5 +30,5 @@ require "./lib/error_exception"
 require "./lib/resource"
 require "./lib/node"
 require "./lib/iq"
-
+require "./lib/query"
 Rim.start

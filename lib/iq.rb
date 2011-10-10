@@ -12,7 +12,11 @@ module Rim
     def bind?
       have?(:bind)
     end
-    
+
+    def query?
+      have?(:query)
+    end
+
     def type=(new_type)
       add_attribute('type', new_type.to_s)
     end
@@ -33,5 +37,10 @@ module Rim
       self.type = :result
       self
     end
+    
+    def query
+      self.elements["query"]
+    end
+    
   end
 end
