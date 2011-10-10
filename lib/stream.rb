@@ -146,18 +146,8 @@ module Rim
     end
     
     def read(content)
-      #if Rim.env == :development
-      #  Rim.logger.debug "<!-- IN -->".blue
-      #  content.each_line do |line|
-      #    Rim.logger.debug line.gsub("\n", "").blue 
-      #  end
-      #end
       @parser.source.buffer << content
       @parser.parse
-      
-      #if respond_to?(:recive, true)
-      #  self.send(:recive, content)
-      #end
     end
     
     def write(content)
